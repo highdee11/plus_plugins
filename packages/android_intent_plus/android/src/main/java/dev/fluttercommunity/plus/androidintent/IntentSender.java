@@ -67,6 +67,8 @@ public final class IntentSender {
     payIntent.putExtra("PAY", paymentInfo);
     System.out.println("Starting Payment Handler");
     startActivityForResult(payIntent, 12345);
+    
+    Log.v(TAG, "Sending intent2" + payIntent);
   }
 
   /**
