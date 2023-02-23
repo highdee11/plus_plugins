@@ -75,7 +75,17 @@ public final class IntentSender {
     }
 
     Log.v(TAG, "Sending broadcast " + intent);
-    applicationContext.sendBroadcast(intent);
+    
+    Bundle paymentInfo = new Bundle();
+    paymentInfo.putString("id", UUID.randomUUID().toString());
+    paymentInfo.putString("amount", amountField.getText().toString());
+    paymentInfo.putString("appid", BuildConfig.APPLICATION_ID);
+    paymentInfo.putString("receipt.data", receiptItemsField.getText().toString());
+    Intent payIntent = new Intent("com.infinitiapp.action.PAY");
+    payIntent.putExtra("PAY", paymentInfo);
+    System.out.println("Starting Payment Handler");
+    startActivityForResult(payIntent, 12345);
+//     applicationContext.sendBroadcast(intent);
   }
 
   /**
