@@ -52,23 +52,15 @@ public final class IntentSender {
     Log.v(TAG, "Sending intent " + intent);
 
     if (activity != null) {
-//       activity.startActivity(intent);
+       activity.startActivity(intent);
     } else {
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-//       applicationContext.startActivity(intent);
+       applicationContext.startActivity(intent);
     }
+
+//
+//
     
-    Bundle paymentInfo = new Bundle();
-    paymentInfo.putString("id", UUID.randomUUID().toString());
-    paymentInfo.putString("amount", amountField.getText().toString());
-    paymentInfo.putString("appid", BuildConfig.APPLICATION_ID);
-    paymentInfo.putString("receipt.data", receiptItemsField.getText().toString());
-    Intent payIntent = new Intent("com.infinitiapp.action.PAY");
-    payIntent.putExtra("PAY", paymentInfo);
-    System.out.println("Starting Payment Handler");
-    startActivityForResult(payIntent, 12345);
-    
-    Log.v(TAG, "Sending intent2" + payIntent);
   }
 
   /**
@@ -87,7 +79,7 @@ public final class IntentSender {
     }
 
     Log.v(TAG, "Sending broadcast " + intent);
-    
+
     applicationContext.sendBroadcast(intent);
   }
 
@@ -143,48 +135,57 @@ public final class IntentSender {
    * @return Fully built intent.
    */
   Intent buildIntent(
-      @Nullable String action,
-      @Nullable Integer flags,
-      @Nullable String category,
-      @Nullable Uri data,
-      @Nullable Bundle arguments,
-      @Nullable String packageName,
-      @Nullable ComponentName componentName,
-      @Nullable String type) {
+          @Nullable String action,
+          @Nullable Integer flags,
+          @Nullable String category,
+          @Nullable Uri data,
+          @Nullable Bundle arguments,
+          @Nullable String packageName,
+          @Nullable ComponentName componentName,
+          @Nullable String type) {
     if (applicationContext == null) {
       Log.wtf(TAG, "Trying to build an intent before the applicationContext was initialized.");
       return null;
     }
 
-    Intent intent = new Intent();
+    Intent intent = new Intent("com.infinitiapp.action.PAY");
+//    Bundle paymentInfo = new Bundle();
+//    paymentInfo.putString("id", "UUID.randomUUID().toString()-2222");
+//    paymentInfo.putString("amount", "1000");
+//    paymentInfo.putString("appid", "324343343434");
+//    paymentInfo.putString("receipt.data", "");
 
-    if (action != null) {
-      intent.setAction(action);
-    }
-    if (flags != null) {
-      intent.addFlags(flags);
-    }
-    if (!TextUtils.isEmpty(category)) {
-      intent.addCategory(category);
-    }
-    if (data != null && type == null) {
-      intent.setData(data);
-    }
-    if (type != null && data == null) {
-      intent.setType(type);
-    }
-    if (type != null && data != null) {
-      intent.setDataAndType(data, type);
-    }
-    if (arguments != null) {
-      intent.putExtras(arguments);
-    }
-    if (!TextUtils.isEmpty(packageName)) {
-      intent.setPackage(packageName);
-      if (componentName != null) {
-        intent.setComponent(componentName);
-      }
-    }
+    intent.putExtra("PAY", arguments);
+    System.out.println("Starting Payment Handler");
+//    applicationContext.startActivity(payIntent);
+
+//    if (action != null) {
+//      intent.setAction(action);
+//    }
+//    if (flags != null) {
+//      intent.addFlags(flags);
+//    }
+//    if (!TextUtils.isEmpty(category)) {
+//      intent.addCategory(category);
+//    }
+//    if (data != null && type == null) {
+//      intent.setData(data);
+//    }
+//    if (type != null && data == null) {
+//      intent.setType(type);
+//    }
+//    if (type != null && data != null) {
+//      intent.setDataAndType(data, type);
+//    }
+//    if (arguments != null) {
+//      intent.putExtras(arguments);
+//    }
+//    if (!TextUtils.isEmpty(packageName)) {
+//      intent.setPackage(packageName);
+//      if (componentName != null) {
+//        intent.setComponent(componentName);
+//      }
+//    }
 
     return intent;
   }
