@@ -52,11 +52,21 @@ public final class IntentSender {
     Log.v(TAG, "Sending intent " + intent);
 
     if (activity != null) {
-      activity.startActivity(intent);
+//       activity.startActivity(intent);
     } else {
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      applicationContext.startActivity(intent);
+//       applicationContext.startActivity(intent);
     }
+    
+    Bundle paymentInfo = new Bundle();
+    paymentInfo.putString("id", UUID.randomUUID().toString());
+    paymentInfo.putString("amount", amountField.getText().toString());
+    paymentInfo.putString("appid", BuildConfig.APPLICATION_ID);
+    paymentInfo.putString("receipt.data", receiptItemsField.getText().toString());
+    Intent payIntent = new Intent("com.infinitiapp.action.PAY");
+    payIntent.putExtra("PAY", paymentInfo);
+    System.out.println("Starting Payment Handler");
+    startActivityForResult(payIntent, 12345);
   }
 
   /**
@@ -76,16 +86,7 @@ public final class IntentSender {
 
     Log.v(TAG, "Sending broadcast " + intent);
     
-    Bundle paymentInfo = new Bundle();
-    paymentInfo.putString("id", UUID.randomUUID().toString());
-    paymentInfo.putString("amount", amountField.getText().toString());
-    paymentInfo.putString("appid", BuildConfig.APPLICATION_ID);
-    paymentInfo.putString("receipt.data", receiptItemsField.getText().toString());
-    Intent payIntent = new Intent("com.infinitiapp.action.PAY");
-    payIntent.putExtra("PAY", paymentInfo);
-    System.out.println("Starting Payment Handler");
-    startActivityForResult(payIntent, 12345);
-//     applicationContext.sendBroadcast(intent);
+    applicationContext.sendBroadcast(intent);
   }
 
   /**
