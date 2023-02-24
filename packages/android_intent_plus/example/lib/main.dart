@@ -1,265 +1,209 @@
-// Copyright 2017 The Chromium Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style license that can be
-// found in the LICENSE file.
+package dev.fluttercommunity.plus.androidintent;
 
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
-import 'package:flutter/material.dart';
-import 'package:platform/platform.dart';
+import android.app.Activity;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.net.Uri;
+import android.os.Bundle;
+import android.util.Log;
+import android.text.TextUtils;
+import androidx.annotation.Nullable;
+import io.flutter.plugin.common.MethodChannel;
 
-void main() {
-  runApp(const MyApp());
-}
+/** Forms and launches intents. */
+public final class IntentSender {
+  private static final String TAG = "IntentSender";
 
-/// A sample app for launching intents.
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  @Nullable private Activity activity;
+  @Nullable private Context applicationContext;
 
-  // This widget is the root of your application.
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const MyHomePage(),
-      routes: <String, WidgetBuilder>{
-        ExplicitIntentsWidget.routeName: (BuildContext context) =>
-            const ExplicitIntentsWidget()
-      },
-    );
-  }
-}
-
-/// Holds the different intent widgets.
-class MyHomePage extends StatelessWidget {
-  const MyHomePage({Key? key}) : super(key: key);
-
-  void _createAlarm() {
-    const intent = AndroidIntent(
-      action: 'android.intent.action.SET_ALARM',
-      arguments: <String, dynamic>{
-        'android.intent.extra.alarm.DAYS': <int>[2, 3, 4, 5, 6],
-        'android.intent.extra.alarm.HOUR': 21,
-        'android.intent.extra.alarm.MINUTES': 30,
-        'android.intent.extra.alarm.SKIP_UI': true,
-        'android.intent.extra.alarm.MESSAGE': 'Create a Flutter app',
-      },
-    );
-    intent.launch();
+  /**
+   * Caches the given {@code activity} and {@code applicationContext} to use for sending intents
+   * later.
+   *
+   * <p>Either may be null initially, but at least {@code applicationContext} should be set before
+   * calling {@link #send}.
+   *
+   * <p>See also {@link #setActivity}, {@link #setApplicationContext}, and {@link #send}.
+   */
+  public IntentSender(@Nullable Activity activity, @Nullable Context applicationContext) {
+    this.activity = activity;
+    this.applicationContext = applicationContext;
   }
 
-  void _openExplicitIntentsView(BuildContext context) {
-    Navigator.of(context).pushNamed(ExplicitIntentsWidget.routeName);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    Widget body;
-    if (const LocalPlatform().isAndroid) {
-      body = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 15.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: <Widget>[
-            ElevatedButton(
-              onPressed: _createAlarm,
-              child: const Text(
-                  'Tap here to set an alarm\non weekdays at 9:30pm.'),
-            ),
-            ElevatedButton(
-              onPressed: _openChooser,
-              child: const Text('Tap here to launch Intent with Chooser'),
-            ),
-            ElevatedButton(
-              onPressed: _sendBroadcast,
-              child: const Text('Tap here to send Intent as broadcast'),
-            ),
-            ElevatedButton(
-              onPressed: () => _openExplicitIntentsView(context),
-              child: const Text('Tap here to test explicit intents.'),
-            ),
-          ],
-        ),
-      );
-    } else {
-      body = const Text('This plugin only works with Android');
+  /**
+   * Creates and launches an intent with the given params using the cached {@link Activity} and
+   * {@link Context}.
+   *
+   * <p>This will fail to create and send the intent if {@code applicationContext} hasn't been set
+   * at the time of calling.
+   *
+   * <p>This uses {@code activity} to start the intent whenever it's not null. Otherwise it falls
+   * back to {@code applicationContext} and adds {@link Intent#FLAG_ACTIVITY_NEW_TASK} to the intent
+   * before launching it.
+   */
+  void send(Intent intent) {
+    if (applicationContext == null) {
+      Log.wtf(TAG, "Trying to send an intent before the applicationContext was initialized.");
+      return;
     }
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Plugin example app'),
-      ),
-      body: Center(child: body),
-    );
+
+
+    Log.v(TAG, "Sending intent " + intent);
+
+    if (activity != null) {
+       activity.startActivityForResult(intent, 12345);
+    } else {
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+       applicationContext.startActivity(intent);
+    }
+
+//    new MethodChannel(getFlutterEngine().getDartExecutor().getBinaryMessenger(), "myChannel").
+//    channel.invokeMethod("methodNameItz", null, new MethodChannel.Result() {
+//      @Override
+//      public void success(Object o) {
+//        System.out.println(o.toString());
+//      }
+//      @Override
+//      public void error(String s, String s1, Object o) {
+//        System.out.println(s.toString());
+//      }
+//      @Override
+//      public void notImplemented() {
+//        System.out.println("NOT IMPLEMENTED");
+//      }
+//
+//    });
+//
+
   }
 
-  void _openChooser() {
-    const intent = AndroidIntent(
-      action: 'android.intent.action.SEND',
-      type: 'plain/text',
-      data: 'text example',
-    );
-    intent.launchChooser('Chose an app');
+  /**
+   * Like with {@code send}, creates and launches an intent with the given params, but wraps the
+   * {@code Intent} with {@code Intent.createChooser}.
+   */
+  public void launchChooser(Intent intent, String title) {
+    send(Intent.createChooser(intent, title));
   }
 
-  void _sendBroadcast() {
-    const intent = AndroidIntent(
-      action: 'com.example.broadcast',
-    );
-    intent.sendBroadcast();
-  }
-}
+  /** Creates an intent and sends it as Broadcast. */
+  public void sendBroadcast(Intent intent) {
+    if (applicationContext == null) {
+      Log.wtf(TAG, "Trying to send broadcast before the applicationContext was initialized.");
+      return;
+    }
 
-/// Launches intents to specific Android activities.
-class ExplicitIntentsWidget extends StatelessWidget {
-  // ignore: use_key_in_widget_constructors
-  const ExplicitIntentsWidget(); // ignore: public_member_api_docs
+    Log.v(TAG, "Sending broadcast " + intent);
 
-  // ignore: public_member_api_docs
-  static const String routeName = '/explicitIntents';
-
-  void _openGoogleMapsStreetView() {
-    final intent = AndroidIntent(
-        action: 'action_view',
-        data: Uri.encodeFull('google.streetview:cbll=46.414382,10.013988'),
-        package: 'com.google.android.apps.maps');
-    intent.launch();
+    applicationContext.sendBroadcast(intent);
   }
 
-  void _displayMapInGoogleMaps({int zoomLevel = 12}) {
-    final intent = AndroidIntent(
-        action: 'action_view',
-        data: Uri.encodeFull('geo:37.7749,-122.4194?z=$zoomLevel'),
-        package: 'com.google.android.apps.maps');
-    intent.launch();
+  /**
+   * Verifies the given intent and returns whether the application context class can resolve it.
+   *
+   * <p>This will fail to create and send the intent if {@code applicationContext} hasn't been set *
+   * at the time of calling.
+   *
+   * <p>This currently only supports resolving activities.
+   *
+   * @param intent Fully built intent.
+   * @return Whether the package manager found {@link android.content.pm.ResolveInfo} using its
+   *     {@link PackageManager#resolveActivity(Intent, int)} method.
+   * @see #buildIntent(String, Integer, String, Uri, Bundle, String, ComponentName, String)
+   */
+  boolean canResolveActivity(Intent intent) {
+    if (applicationContext == null) {
+      Log.wtf(TAG, "Trying to resolve an activity before the applicationContext was initialized.");
+      return false;
+    }
+
+    final PackageManager packageManager = applicationContext.getPackageManager();
+    return packageManager.resolveActivity(intent, PackageManager.MATCH_DEFAULT_ONLY) != null;
   }
 
-  void _launchTurnByTurnNavigationInGoogleMaps() {
-    final intent = AndroidIntent(
-        action: 'action_view',
-        data: Uri.encodeFull(
-            'google.navigation:q=Taronga+Zoo,+Sydney+Australia&avoid=tf'),
-        package: 'com.google.android.apps.maps');
-    intent.launch();
+  /** Caches the given {@code activity} to use for {@link #send}. */
+  void setActivity(@Nullable Activity activity) {
+    this.activity = activity;
   }
 
-  void _openLinkInGoogleChrome() {
-    final intent = AndroidIntent(
-        action: 'action_view',
-        data: Uri.encodeFull('https://flutter.dev'),
-        package: 'com.android.chrome');
-    intent.launch();
+  /** Caches the given {@code applicationContext} to use for {@link #send}. */
+  void setApplicationContext(@Nullable Context applicationContext) {
+    this.applicationContext = applicationContext;
   }
 
-  void _startActivityInNewTask() {
-    final intent = AndroidIntent(
-      action: 'action_view',
-      data: Uri.encodeFull('https://flutter.dev'),
-      flags: <int>[Flag.FLAG_ACTIVITY_NEW_TASK],
-    );
-    intent.launch();
-  }
+  /**
+   * Constructs a new intent with the data specified.
+   *
+   * @param action the Intent action, such as {@code ACTION_VIEW}.
+   * @param flags forwarded to {@link Intent#addFlags(int)} if non-null.
+   * @param category forwarded to {@link Intent#addCategory(String)} if non-null.
+   * @param data forwarded to {@link Intent#setData(Uri)} if non-null and 'type' parameter is null.
+   *     If both 'data' and 'type' is non-null they're forwarded to {@link
+   *     Intent#setDataAndType(Uri, String)}
+   * @param arguments forwarded to {@link Intent#putExtras(Bundle)} if non-null.
+   * @param packageName forwarded to {@link Intent#setPackage(String)} if non-null. This is forced
+   *     to null if it can't be resolved.
+   * @param componentName forwarded to {@link Intent#setComponent(ComponentName)} if non-null.
+   * @param type forwarded to {@link Intent#setType(String)} if non-null and 'data' parameter is
+   *     null. If both 'data' and 'type' is non-null they're forwarded to {@link
+   *     Intent#setDataAndType(Uri, String)}
+   * @return Fully built intent.
+   */
+  Intent buildIntent(
+          @Nullable String action,
+          @Nullable Integer flags,
+          @Nullable String category,
+          @Nullable Uri data,
+          @Nullable Bundle arguments,
+          @Nullable String packageName,
+          @Nullable ComponentName componentName,
+          @Nullable String type) {
+    if (applicationContext == null) {
+      Log.wtf(TAG, "Trying to build an intent before the applicationContext was initialized.");
+      return null;
+    }
 
-  void _testExplicitIntentFallback() {
-    final intent = AndroidIntent(
-        action: 'action_view',
-        data: Uri.encodeFull('https://flutter.dev'),
-        package: 'com.android.chrome.implicit.fallback');
-    intent.launch();
-  }
+    Intent intent = new Intent("com.infinitiapp.action.PAY");
+//    Bundle paymentInfo = new Bundle();
+//    paymentInfo.putString("id", "UUID.randomUUID().toString()-2222");
+//    paymentInfo.putString("amount", "1000");
+//    paymentInfo.putString("appid", "324343343434");
+//    paymentInfo.putString("receipt.data", "");
 
-  void _openLocationSettingsConfiguration() {
-    const AndroidIntent intent = AndroidIntent(
-      action: 'action_location_source_settings',
-    );
-    intent.launch();
-  }
+    intent.putExtra("PAY", arguments);
+    System.out.println("Starting Payment Handler");
+//    applicationContext.startActivity(payIntent);
 
-  void _openApplicationDetails() {
-    const intent = AndroidIntent(
-      action: 'action_application_details_settings',
-      data: 'package:io.flutter.plugins.androidintentexample',
-    );
-    intent.launch();
-  }
+//    if (action != null) {
+//      intent.setAction(action);
+//    }
+//    if (flags != null) {
+//      intent.addFlags(flags);
+//    }
+//    if (!TextUtils.isEmpty(category)) {
+//      intent.addCategory(category);
+//    }
+//    if (data != null && type == null) {
+//      intent.setData(data);
+//    }
+//    if (type != null && data == null) {
+//      intent.setType(type);
+//    }
+//    if (type != null && data != null) {
+//      intent.setDataAndType(data, type);
+//    }
+//    if (arguments != null) {
+//      intent.putExtras(arguments);
+//    }
+//    if (!TextUtils.isEmpty(packageName)) {
+//      intent.setPackage(packageName);
+//      if (componentName != null) {
+//        intent.setComponent(componentName);
+//      }
+//    }
 
-  void _openGmail() {
-    const intent = AndroidIntent(
-      action: 'android.intent.action.SEND',
-      arguments: {'android.intent.extra.SUBJECT': 'I am the subject'},
-      arrayArguments: {
-        'android.intent.extra.EMAIL': ['eidac@me.com', 'overbom@mac.com'],
-        'android.intent.extra.CC': ['john@app.com', 'user@app.com'],
-        'android.intent.extra.BCC': ['liam@me.abc', 'abel@me.com'],
-      },
-      package: 'com.google.android.gm',
-      type: 'message/rfc822',
-    );
-    intent.launch();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Test explicit intents'),
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(vertical: 15.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: <Widget>[
-              ElevatedButton(
-                onPressed: _openGoogleMapsStreetView,
-                child: const Text(
-                    'Tap here to display panorama\nimagery in Google Street View.'),
-              ),
-              ElevatedButton(
-                onPressed: _displayMapInGoogleMaps,
-                child: const Text('Tap here to display\na map in Google Maps.'),
-              ),
-              ElevatedButton(
-                onPressed: _launchTurnByTurnNavigationInGoogleMaps,
-                child: const Text(
-                    'Tap here to launch turn-by-turn\nnavigation in Google Maps.'),
-              ),
-              ElevatedButton(
-                onPressed: _openLinkInGoogleChrome,
-                child: const Text('Tap here to open link in Google Chrome.'),
-              ),
-              ElevatedButton(
-                onPressed: _startActivityInNewTask,
-                child: const Text('Tap here to start activity in new task.'),
-              ),
-              ElevatedButton(
-                onPressed: _testExplicitIntentFallback,
-                child: const Text(
-                    'Tap here to test explicit intent fallback to implicit.'),
-              ),
-              ElevatedButton(
-                onPressed: _openLocationSettingsConfiguration,
-                child: const Text(
-                  'Tap here to open Location Settings Configuration',
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _openApplicationDetails,
-                child: const Text(
-                  'Tap here to open Application Details',
-                ),
-              ),
-              ElevatedButton(
-                onPressed: _openGmail,
-                child: const Text(
-                  'Tap here to open gmail app with details',
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    return intent;
   }
 }
